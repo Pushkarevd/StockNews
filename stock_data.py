@@ -25,23 +25,25 @@ def get_figi_data(client: ti.SyncClient, figi: str, time_interval: datetime, day
     return dataframe
 
 
-def create_stock_data(client: ti.SyncClient, figi: str):
+def create_stock_data(client: ti.SyncClient, figi: str, ticker: str = None):
     START_TIME = datetime.strptime('01.10.2018', '%d.%m.%Y')
     END_TIME = datetime.now()
     DAYS = (END_TIME - START_TIME).days
 
     generator = (get_figi_data(client, figi, START_TIME, day) for day in range(DAYS))
-    year_data = []
+    all_data = []
+    partition_data = []
     for day, partition in enumerate(generator):
-        print(day)
-        year_data.append(partition)
+        partition_data.append(partition)
+
         if (day + 1) % 50 == 0:
-            print(f'{day} completed')
-            pd.concat(year_data, ignore_index=True).to_csv(f"./data/{figi}.{day}.csv")
-            year_data = []
+            all_data.extend(partition_data)
+            partition_data = []
             sleep(60)
         sleep(.5)
-    pd.concat(year_data, ignore_index=True).to_csv(f"./data/{figi}.{day}.csv")
+
+    all_data.extend(partition_data)
+    pd.concat(all_data, ignore_index=True).to_csv(f"./data/{ticker if ticker else figi}.csv")
 
 
 if __name__ == '__main__':
@@ -49,6 +51,7 @@ if __name__ == '__main__':
 
     client = ti.SyncClient(token)
 
-    figi = get_figi(client, 'AAPL')
+    ticker = 'AMZN'
+    figi = get_figi(client, ticker)
 
-    create_stock_data(client, figi)
+    create_stock_data(client, figi, ticker)
